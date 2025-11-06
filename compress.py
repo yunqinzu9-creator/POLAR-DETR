@@ -1,7 +1,7 @@
 import warnings
 warnings.filterwarnings('ignore')
 import argparse, yaml, copy
-from ultralytics.models.rtdetr.compress import RTDETRCompressor, RTDETRFinetune
+from rtdetr.compress import RTDETRCompressor, RTDETRFinetune
 
 def compress(param_dict):
     with open(param_dict['sl_hyp'], errors='ignore') as f:
