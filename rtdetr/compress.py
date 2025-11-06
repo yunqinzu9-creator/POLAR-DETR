@@ -1,5 +1,3 @@
-# Ultralytics YOLO 🚀, AGPL-3.0 license
-
 import torch
 import dill as pickle
 import sys, os, torch, math, time, warnings
@@ -69,43 +67,18 @@ def get_pruner(opt, model, example_inputs):
         imp = tp.importance.RandomImportance()
         pruner_entry = partial(tp.pruner.MagnitudePruner, global_pruning=opt.global_pruning)
     elif opt.prune_method == "l1":
-        # https://arxiv.org/abs/1608.08710
         imp = tp.importance.MagnitudeImportance(p=1)
         pruner_entry = partial(tp.pruner.MagnitudePruner, global_pruning=opt.global_pruning)
     elif opt.prune_method == "lamp":
-        # https://arxiv.org/abs/2010.07611
         imp = tp.importance.LAMPImportance(p=2)
         pruner_entry = partial(tp.pruner.MagnitudePruner, global_pruning=opt.global_pruning)
-    elif opt.prune_method == "slim":
-        # https://arxiv.org/abs/1708.06519
-        sparsity_learning = True
-        imp = tp.importance.BNScaleImportance()
-        pruner_entry = partial(tp.pruner.BNScalePruner, reg=opt.reg, global_pruning=opt.global_pruning)
-    elif opt.prune_method == "group_slim":
-        # https://tibshirani.su.domains/ftp/sparse-grlasso.pdf
-        sparsity_learning = True
-        imp = tp.importance.BNScaleImportance()
-        pruner_entry = partial(tp.pruner.BNScalePruner, reg=opt.reg, global_pruning=opt.global_pruning, group_lasso=True)
     elif opt.prune_method == "group_norm":
-        # https://openaccess.thecvf.com/content/CVPR2023/html/Fang_DepGraph_Towards_Any_Structural_Pruning_CVPR_2023_paper.html
         imp = tp.importance.GroupNormImportance(p=2)
         pruner_entry = partial(tp.pruner.GroupNormPruner, global_pruning=opt.global_pruning)
-    elif opt.prune_method == "group_sl":
-        # https://openaccess.thecvf.com/content/CVPR2023/html/Fang_DepGraph_Towards_Any_Structural_Pruning_CVPR_2023_paper.html
-        sparsity_learning = True
-        imp = tp.importance.GroupNormImportance(p=2)
-        pruner_entry = partial(tp.pruner.GroupNormPruner, reg=opt.reg, global_pruning=opt.global_pruning)
-    elif opt.prune_method == "growing_reg":
-        # https://arxiv.org/abs/2012.09243
-        sparsity_learning = True
-        imp = tp.importance.GroupNormImportance(p=2)
-        pruner_entry = partial(tp.pruner.GrowingRegPruner, reg=opt.reg, delta_reg=opt.delta_reg, global_pruning=opt.global_pruning)
     elif opt.prune_method == "group_hessian":
-        # https://proceedings.neurips.cc/paper/1989/hash/6c9882bbac1c7093bd25041881277658-Abstract.html
         imp = tp.importance.HessianImportance(group_reduction='mean')
         pruner_entry = partial(tp.pruner.MagnitudePruner, global_pruning=opt.global_pruning)
     elif opt.prune_method == "group_taylor":
-        # https://openaccess.thecvf.com/content_CVPR_2019/papers/Molchanov_Importance_Estimation_for_Neural_Network_Pruning_CVPR_2019_paper.pdf
         imp = tp.importance.TaylorImportance(group_reduction='mean')
         pruner_entry = partial(tp.pruner.MagnitudePruner, global_pruning=opt.global_pruning)
     else:
@@ -122,19 +95,19 @@ def get_pruner(opt, model, example_inputs):
     # for rtdetr-r18.yaml
     customized_pruners[RepConv] = RepConvPruner()
     for k, m in model.named_modules():
-        if isinstance(m, TransformerEncoderLayer_Pola_SEFN_Mona_DyT):
+        if isinstance(m, Polarized_Occlusion_Aware_Hierarchical_Feature_Encoder):
             ignored_layers.append(m)
         if isinstance(m, RTDETRDecoder):
             ignored_layers.append(m)
         if isinstance(m, MFM):
             # ignored_layers.append(m.avg_pool)
             ignored_layers.append(m.mlp)
-            # ignored_layers.append(m.mlp[0])  # 第一个Conv2d层
-            # ignored_layers.append(m.mlp[1])  # ReLU激活层
-            # ignored_layers.append(m.mlp[2])  # 第二个Conv2d层
+            # ignored_layers.append(m.mlp[0])  
+            # ignored_layers.append(m.mlp[1])  
+            # ignored_layers.append(m.mlp[2])  
             # ignored_layers.append(m.softmax)
             # for i, conv1x1 in enumerate(m.conv1x1):
-            #     if not isinstance(conv1x1, nn.Identity):  # 只有非Identity层才需要考虑跳过
+            #     if not isinstance(conv1x1, nn.Identity):  
             #         ignored_layers.append(conv1x1)
         # if isinstance(m, HyperComputeModule):
             # ignored_layers.append(m.hgconv)
@@ -144,15 +117,15 @@ def get_pruner(opt, model, example_inputs):
             # ignored_layers.append(m.cv_first)
             # ignored_layers.append(m.cv_block_1)
             # ignored_layers.append(m.cv_block_2)
-            # ignored_layers.append(m.cv_block_2[0])  # Conv层
-            # ignored_layers.append(m.cv_block_2[1])  # DWConv层
-            # ignored_layers.append(m.cv_block_2[2])  # Conv层
+            # ignored_layers.append(m.cv_block_2[0])  
+            # ignored_layers.append(m.cv_block_2[1])  
+            # ignored_layers.append(m.cv_block_2[2])  
 
             for i, bottleneck in enumerate(m.m):
                  ignored_layers.append(bottleneck)
 
             # ignored_layers.append(m.cv_final)
-        if isinstance(m, HAFB):
+        if isinstance(m, Hierarchical_Dual_Branch_Attention_Fusion):
             ignored_layers.append(m.lgb1_local)
             ignored_layers.append(m.lgb1_global)
             ignored_layers.append(m.lgb2_local)
@@ -164,118 +137,6 @@ def get_pruner(opt, model, example_inputs):
             # ignored_layers.append(m.rep_conv)
             # ignored_layers.append(m.conv_final)
 
-    # ultralytics/cfg/models/rt-detr/rtdetr-goldyolo.yaml
-    # customized_pruners[RepConv] = RepConvPruner()
-    # for k, m in model.named_modules():
-    #     if isinstance(m, AIFI):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, RTDETRDecoder):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, IFM):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, TopBasicLayer):
-    #         ignored_layers.append(m)
-    #     # ------------------------------------------------
-    #     # if isinstance(m, InjectionMultiSum_Auto_pool):
-    #     #     ignored_layers.append(m)
-    #     # if isinstance(m, SimFusion_3in):
-    #     #     ignored_layers.append(m)
-    #     # if isinstance(m, SimFusion_4in):
-    #     #     ignored_layers.append(m)
-    #     # if isinstance(m, AdvPoolFusion):
-    #     #     ignored_layers.append(m)
-    #     # if isinstance(m, PyramidPoolAgg):
-    #     #     ignored_layers.append(m)
-    #     # if isinstance(m, RepVGGBlock):
-    #     #     ignored_layers.append(m)
-    #     # ------------------------------------------------
-    
-    # ultralytics/cfg/models/rt-detr/rtdetr-C2f-FFCM.yaml
-    # customized_pruners[RepConv] = RepConvPruner()
-    # for k, m in model.named_modules():
-    #     if isinstance(m, AIFI):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, RTDETRDecoder):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, Fused_Fourier_Conv_Mixer):
-    #         ignored_layers.append(m.conv_init)
-    #         ignored_layers.append(m.mixer_gloal)
-    
-    # ultralytics/cfg/models/rt-detr/rtdetr-slimneck-ASF.yaml
-    # customized_pruners[RepConv] = RepConvPruner()
-    # for k, m in model.named_modules():
-    #     if isinstance(m, AIFI):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, RTDETRDecoder):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, GSConv):
-    #         ignored_layers.append(m)
-    
-    # ultralytics/cfg/models/rt-detr/rtdetr-Faster.yaml
-    # customized_pruners[RepConv] = RepConvPruner()
-    # for k, m in model.named_modules():
-    #     if isinstance(m, AIFI):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, RTDETRDecoder):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, BasicBlock_Faster_Block):
-    #         ignored_layers.append(m.branch2a)
-    #         if m.branch2b.adjust_channel is not None:
-    #             ignored_layers.append(m.branch2b.adjust_channel)
-    
-    # ultralytics/cfg/models/rt-detr/rtdetr-RepNCSPELAN.yaml
-    # customized_pruners[RepConvN] = RepConvNPruner()
-    # for k, m in model.named_modules():
-    #     if isinstance(m, AIFI):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, RTDETRDecoder):
-    #         ignored_layers.append(m)
-    # ignored_layers.append(model.model[2].cv4)
-    # ignored_layers.append(model.model[4].cv4)
-    # ignored_layers.append(model.model[6].cv4)
-    
-    # ultralytics/cfg/models/rt-detr/rtdetr-SOEP.yaml
-    # customized_pruners[RepConv] = RepConvPruner()
-    # for k, m in model.named_modules():
-    #     if isinstance(m, AIFI):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, RTDETRDecoder):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, SPDConv):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, CSPOmniKernel):
-    #         ignored_layers.append(m)
-    # ignored_layers.append(model.model[10])
-    # ignored_layers.append(model.model[15])
-    
-    # ultralytics/cfg/models/rt-detr/rtdetr-MutilBackbone-DAF.yaml
-    # customized_pruners[RepConv] = RepConvPruner()
-    # for k, m in model.named_modules():
-    #     if isinstance(m, AIFI):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, RTDETRDecoder):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, DynamicAlignFusion):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, HGBlock):
-    #         ignored_layers.append(m.ec)
-    
-    # ultralytics/cfg/models/rt-detr/rtdetr-CSP-MutilScaleEdgeInformationSelect.yaml
-    # customized_pruners[RepConv] = RepConvPruner()
-    # for k, m in model.named_modules():
-    #     if isinstance(m, AIFI):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, RTDETRDecoder):
-    #         ignored_layers.append(m)
-    #     if isinstance(m, MutilScaleEdgeInformationSelect):
-    #         ignored_layers.append(m)
-    # ignored_layers.append(model.model[11])
-    # ignored_layers.append(model.model[16])
-    
-    # for yolov8-detr.yaml
-    # for k, m in model.named_modules():
-    #     if isinstance(m, RTDETRDecoder):
-    #         ignored_layers.append(m)
     
     print(ignored_layers)
     pruner = pruner_entry(
@@ -544,142 +405,6 @@ class RTDETRCompressor(BaseTrainer):
         self.scheduler.last_epoch = self.start_epoch - 1  # do not move
         self.run_callbacks('on_pretrain_routine_end')
 
-    # def _do_train(self, world_size=1):
-    #     """Train completed, evaluate and plot if specified by arguments."""
-    #     if world_size > 1:
-    #         self._setup_ddp(world_size)
-    #     self._setup_train(world_size)
-
-    #     self.epoch_time = None
-    #     self.epoch_time_start = time.time()
-    #     self.train_time_start = time.time()
-    #     nb = len(self.train_loader)  # number of batches
-    #     # nw = max(round(self.args.warmup_epochs * nb), 100) if self.args.warmup_epochs > 0 else -1  # warmup iterations
-    #     nw = 100
-    #     last_opt_step = -1
-    #     self.run_callbacks('on_train_start')
-    #     LOGGER.info(f'Image sizes {self.args.imgsz} train, {self.args.imgsz} val\n'
-    #                 f'Using {self.train_loader.num_workers * (world_size or 1)} dataloader workers\n'
-    #                 f"Logging results to {colorstr('bold', self.save_dir)}\n"
-    #                 f'Starting training for {self.epochs} epochs...')
-    #     if self.args.close_mosaic:
-    #         base_idx = (self.epochs - self.args.close_mosaic) * nb
-    #         self.plot_idx.extend([base_idx, base_idx + 1, base_idx + 2])
-    #     epoch = self.epochs  # predefine for resume fully trained model edge cases
-    #     for epoch in range(self.start_epoch, self.epochs):
-    #         self.epoch = epoch
-    #         self.run_callbacks('on_train_epoch_start')
-    #         self.model.train()
-    #         if RANK != -1:
-    #             self.train_loader.sampler.set_epoch(epoch)
-    #         pbar = enumerate(self.train_loader)
-    #         # Update dataloader attributes (optional)
-    #         if epoch == (self.epochs - self.args.close_mosaic):
-    #             LOGGER.info('Closing dataloader mosaic')
-    #             if hasattr(self.train_loader.dataset, 'mosaic'):
-    #                 self.train_loader.dataset.mosaic = False
-    #             if hasattr(self.train_loader.dataset, 'close_mosaic'):
-    #                 self.train_loader.dataset.close_mosaic(hyp=self.args)
-    #             self.train_loader.reset()
-
-    #         if RANK in (-1, 0):
-    #             LOGGER.info(self.progress_string())
-    #             pbar = TQDM(enumerate(self.train_loader), total=nb)
-    #         self.tloss = None
-    #         self.optimizer.zero_grad()
-    #         for i, batch in pbar:
-    #             self.run_callbacks('on_train_batch_start')
-    #             # Warmup
-    #             ni = i + nb * epoch
-    #             if ni <= nw:
-    #                 xi = [0, nw]  # x interp
-    #                 self.accumulate = max(1, np.interp(ni, xi, [1, self.args.nbs / self.batch_size]).round())
-    #                 for j, x in enumerate(self.optimizer.param_groups):
-    #                     # Bias lr falls from 0.1 to lr0, all other lrs rise from 0.0 to lr0
-    #                     x['lr'] = np.interp(
-    #                         ni, xi, [self.args.warmup_bias_lr if j == 0 else 0.0, x['initial_lr'] * self.lf(epoch)])
-    #                     if 'momentum' in x:
-    #                         x['momentum'] = np.interp(ni, xi, [self.args.warmup_momentum, self.args.momentum])
-
-    #             # Forward
-    #             with torch.cuda.amp.autocast(self.amp):
-    #                 batch = self.preprocess_batch(batch)
-    #                 self.loss, self.loss_items = self.model(batch)
-    #                 if RANK != -1:
-    #                     self.loss *= world_size
-    #                 self.tloss = (self.tloss * i + self.loss_items) / (i + 1) if self.tloss is not None \
-    #                     else self.loss_items
-
-    #             # Backward
-    #             self.scaler.scale(self.loss).backward()
-
-    #             # Optimize - https://pytorch.org/docs/master/notes/amp_examples.html
-    #             if ni - last_opt_step >= self.accumulate:
-    #                 self.optimizer_step()
-    #                 last_opt_step = ni
-
-    #             # Log
-    #             mem = f'{torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0:.3g}G'  # (GB)
-    #             loss_len = self.tloss.shape[0] if len(self.tloss.size()) else 1
-    #             losses = self.tloss if loss_len > 1 else torch.unsqueeze(self.tloss, 0)
-    #             if RANK in (-1, 0):
-    #                 pbar.set_description(
-    #                     ('%11s' * 2 + '%11.4g' * (2 + loss_len)) %
-    #                     (f'{epoch + 1}/{self.epochs}', mem, *losses, batch['cls'].shape[0], batch['img'].shape[-1]))
-    #                 self.run_callbacks('on_batch_end')
-    #                 if self.args.plots and ni in self.plot_idx:
-    #                     self.plot_training_samples(batch, ni)
-
-    #             self.run_callbacks('on_train_batch_end')
-
-    #         self.lr = {f'lr/pg{ir}': x['lr'] for ir, x in enumerate(self.optimizer.param_groups)}  # for loggers
-
-    #         with warnings.catch_warnings():
-    #             warnings.simplefilter('ignore')  # suppress 'Detected lr_scheduler.step() before optimizer.step()'
-    #             self.scheduler.step()
-    #         self.run_callbacks('on_train_epoch_end')
-
-    #         if RANK in (-1, 0):
-
-    #             # Validation
-    #             self.ema.update_attr(self.model, include=['yaml', 'nc', 'args', 'names', 'stride', 'class_weights'])
-    #             final_epoch = (epoch + 1 == self.epochs) or self.stopper.possible_stop
-
-    #             if self.args.val or final_epoch:
-    #                 self.metrics, self.fitness = self.validate()
-    #             self.save_metrics(metrics={**self.label_loss_items(self.tloss), **self.metrics, **self.lr})
-    #             self.stop = self.stopper(epoch + 1, self.fitness)
-
-    #             # Save model
-    #             if self.args.save or (epoch + 1 == self.epochs):
-    #                 self.save_model()
-    #                 self.run_callbacks('on_model_save')
-
-    #         tnow = time.time()
-    #         self.epoch_time = tnow - self.epoch_time_start
-    #         self.epoch_time_start = tnow
-    #         self.run_callbacks('on_fit_epoch_end')
-    #         torch.cuda.empty_cache()  # clears GPU vRAM at end of epoch, can help with out of memory errors
-
-    #         # Early Stopping
-    #         if RANK != -1:  # if DDP training
-    #             broadcast_list = [self.stop if RANK == 0 else None]
-    #             dist.broadcast_object_list(broadcast_list, 0)  # broadcast 'stop' to all ranks
-    #             if RANK != 0:
-    #                 self.stop = broadcast_list[0]
-    #         if self.stop:
-    #             break  # must break all DDP ranks
-
-    #     if RANK in (-1, 0):
-    #         # Do final val with best.pt
-    #         LOGGER.info(f'\n{epoch - self.start_epoch + 1} epochs completed in '
-    #                     f'{(time.time() - self.train_time_start) / 3600:.3f} hours.')
-    #         self.final_eval()
-    #         if self.args.plots:
-    #             self.plot_metrics()
-    #         self.run_callbacks('on_train_end')
-    #     torch.cuda.empty_cache()
-    #     self.run_callbacks('teardown')
 
     def save_model(self):
         """Save model training checkpoints with additional metadata."""
